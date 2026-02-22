@@ -88,6 +88,45 @@ export default function MapPage() {
     );
   }, []);
 
+  // Handle directions from listings page
+  useEffect(() => {
+    if (!mapReady) return;
+    const params = new URLSearchParams(window.location.search);
+    const lat = parseFloat(params.get("lat") || "");
+    const lng = parseFloat(params.get("lng") || "");
+    const name = params.get("name") || "";
+    if (!isNaN(lat) && !isNaN(lng)) {
+      setTimeout(() => {
+        if (!mapInstance.current) return;
+        mapInstance.current.setCenter({ lat, lng });
+        mapInstance.current.setZoom(17);
+        const MarkerClass = markerClassRef.current;
+        if (MarkerClass && infoRef.current) {
+          const el = document.createElement("div");
+          el.innerHTML = `<div style="
+            background:#16a34a;color:#fff;border-radius:50%;
+            width:36px;height:36px;display:flex;align-items:center;
+            justify-content:center;font-size:18px;
+            box-shadow:0 2px 8px rgba(0,0,0,.3);border:2px solid #fff;
+          ">📍</div>`;
+          const marker = new MarkerClass({
+            map: mapInstance.current,
+            position: { lat, lng },
+            title: name,
+            content: el,
+          });
+          infoRef.current.setContent(`
+            <div style="padding:8px;max-width:260px">
+              <strong style="font-size:14px">${name}</strong>
+            </div>
+          `);
+          infoRef.current.open(mapInstance.current, marker);
+          markersRef.current.push(marker);
+        }
+      }, 500);
+    }
+  }, [mapReady]);
+
   const clearMarkers = useCallback(() => {
     markersRef.current.forEach((m) => (m.map = null));
     markersRef.current = [];
@@ -105,7 +144,7 @@ export default function MapPage() {
       circleRef.current = new google.maps.Circle({
         map: mapInstance.current,
         center,
-        radius: 5 * 1609.34, // 5 miles in meters
+        radius: 5 * 1609.34,
         fillColor: "#16a34a",
         fillOpacity: 0.06,
         strokeColor: "#16a34a",
@@ -325,7 +364,7 @@ export default function MapPage() {
                     className={`cursor-pointer p-4 transition-colors ${selectedIdx === idx ? "bg-brand-50" : "hover:bg-gray-50"}`}
                     onClick={() => {
                       setSelectedIdx(idx);
-                      const m = markersRef.current[idx + 1]; // +1 because index 0 is user marker
+                      const m = markersRef.current[idx + 1];
                       if (m && mapInstance.current) {
                         mapInstance.current.panTo({ lat: rest.lat, lng: rest.lng });
                         mapInstance.current.setZoom(15);

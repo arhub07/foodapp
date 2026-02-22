@@ -4,9 +4,7 @@ import {
   ListPlus,
   HandHeart,
   Truck,
-  Users,
   Leaf,
-  TrendingUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
@@ -29,12 +27,6 @@ const steps = [
     description:
       "Coordinate pickup times and rescue food before it goes to waste.",
   },
-];
-
-const stats = [
-  { label: "Meals Rescued", value: "24,500+", icon: Leaf },
-  { label: "Active Users", value: "3,200+", icon: Users },
-  { label: "Pounds Diverted", value: "48,000+", icon: TrendingUp },
 ];
 
 export default function HomePage() {
@@ -111,22 +103,15 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Stats */}
+      {/* Mission Banner */}
       <section className="bg-brand-600 py-16">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid gap-8 md:grid-cols-3">
-            {stats.map((stat) => (
-              <div key={stat.label} className="text-center">
-                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-white/20">
-                  <stat.icon className="h-6 w-6 text-white" />
-                </div>
-                <p className="text-3xl font-extrabold text-white">
-                  {stat.value}
-                </p>
-                <p className="mt-1 text-sm text-brand-100">{stat.label}</p>
-              </div>
-            ))}
-          </div>
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center italic">
+          <h2 className="text-3xl font-extrabold text-white sm:text-4xl">
+            Fighting Food Waste, One Meal at a Time
+          </h2>
+          <p className="mt-4 text-xl text-white max-w-2xl mx-auto font-bold italic">
+            Connecting surplus food with people who need it most.
+          </p>
         </div>
       </section>
 

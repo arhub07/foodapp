@@ -11,7 +11,6 @@ import { useAuthStore } from "@/store/useAuthStore";
 const navLinks = [
   { href: "/map", label: "Find Food", icon: MapPin },
   { href: "/listings", label: "Browse", icon: LayoutGrid },
-  { href: "/dashboard", label: "Dashboard", icon: BarChart3 },
 ];
 
 export function Navbar() {

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Leaf } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { createClient } from "@/lib/supabase";
@@ -10,6 +10,7 @@ import { useAuthStore } from "@/store/useAuthStore";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const login = useAuthStore((s) => s.login);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -29,7 +30,20 @@ export default function LoginPage() {
       });
 
       if (signInError) {
-        setError(signInError.message);
+        const msg = signInError.message;
+        if (msg.toLowerCase().includes("failed to fetch") || msg.toLowerCase().includes("fetch")) {
+          setError(
+            "Cannot reach Supabase. Try: (1) Use the anon key (long JWT starting with eyJ) from API settings, not the publishable key. (2) Check if your Supabase project is paused — restore it in the dashboard. (3) Restart the dev server after changing .env.local. (4) Try in incognito to rule out browser extensions."
+          );
+        } else if (msg.toLowerCase().includes("email not confirmed")) {
+          setError(
+            "Please check your email and click the confirmation link before signing in."
+          );
+        } else if (msg.toLowerCase().includes("invalid login")) {
+          setError("Invalid email or password. Make sure you've registered first.");
+        } else {
+          setError(msg);
+        }
         setLoading(false);
         return;
       }
@@ -40,15 +54,9 @@ export default function LoginPage() {
         return;
       }
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role, full_name")
-        .eq("id", data.user.id)
-        .single();
-
-      const role = profile?.role ?? "consumer";
+      const role =
+        (data.user.user_metadata?.role as string) ?? "consumer";
       const name =
-        profile?.full_name ??
         (data.user.user_metadata?.full_name as string) ??
         data.user.email?.split("@")[0] ??
         "User";
@@ -63,8 +71,13 @@ export default function LoginPage() {
         data.session?.access_token ?? ""
       );
 
-      router.push(role === "business" ? "/dashboard" : "/map");
-      router.refresh();
+      setLoading(false);
+      const redirect = searchParams.get("redirect");
+      if (redirect && (redirect.startsWith("/map") || redirect.startsWith("/listings"))) {
+        router.push(redirect);
+      } else {
+        router.push(role === "business" ? "/dashboard" : "/map");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -152,6 +165,11 @@ export default function LoginPage() {
         >
           Sign in as business
         </Link>
+      </p>
+
+      <p className="mt-6 text-center text-xs text-gray-400">
+        Can&apos;t sign in? Check your email for a confirmation link after registering.
+        In Supabase Dashboard → Auth → Providers, you can disable &quot;Confirm email&quot; for development.
       </p>
     </div>
   );

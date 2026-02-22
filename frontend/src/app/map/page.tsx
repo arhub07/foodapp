@@ -13,8 +13,26 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { initGoogleMaps } from "@/lib/google-maps";
+import { AuthGuard } from "@/components/auth/AuthGuard";
 
 const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+
+function isRestaurantClosed(closing_time: string): boolean {
+  if (!closing_time || closing_time === "Unknown") return false;
+  const now = new Date();
+  const closing = new Date();
+  const parts = closing_time.split(" ");
+  const [time, modifier] = parts.length >= 2 ? [parts[0], parts[1]] : [parts[0], ""];
+  let [hours, minutes] = (time || "0:0").split(":").map(Number);
+  if (modifier === "PM" && hours !== 12) hours += 12;
+  if (modifier === "AM" && hours === 12) hours = 0;
+  closing.setHours(hours, minutes, 0, 0);
+  return now > closing;
+}
+
+function shouldShowAsClosed(closing_time: string): boolean {
+  return !closing_time || closing_time === "Unknown" || isRestaurantClosed(closing_time);
+}
 
 interface Restaurant {
   restaurant_name: string;
@@ -158,13 +176,18 @@ export default function MapPage() {
           const peakHtml = rest.peak_surplus_day
             ? `<p style="margin:4px 0;font-size:12px;color:#b45309;font-weight:600">Peak surplus: ${rest.peak_surplus_day}${rest.peak_surplus_kg != null ? ` (~${rest.peak_surplus_kg.toFixed(1)} kg)` : ""}</p>`
             : "";
+          const dirUrl = `https://www.google.com/maps/dir/?api=1&destination=${rest.lat},${rest.lng}`;
+          const closed = shouldShowAsClosed(rest.closing_time);
+          const closesHtml = closed
+            ? '<p style="margin:4px 0;font-size:12px;color:#dc2626;font-weight:600">Closed</p>'
+            : `<p style="margin:4px 0;font-size:12px;color:#16a34a;font-weight:600">Closes: ${rest.closing_time}</p>`;
           infoRef.current?.setContent(`
             <div style="padding:8px;max-width:260px">
               <strong style="font-size:14px">${rest.restaurant_name}</strong>
-              <p style="margin:4px 0;font-size:12px;color:#666">${rest.address}</p>
-              <p style="margin:4px 0;font-size:12px;color:#16a34a;font-weight:600">
-                Closes: ${rest.closing_time}
+              <p style="margin:4px 0;font-size:12px;color:#666">
+                <a href="${dirUrl}" target="_blank" rel="noopener noreferrer" style="color:#16a34a;text-decoration:underline;cursor:pointer">${rest.address}</a>
               </p>
+              ${closesHtml}
               ${peakHtml}
               <p style="font-size:11px;color:#888">${rest.distance_miles} mi away</p>
             </div>
@@ -201,6 +224,7 @@ export default function MapPage() {
       setSelectedIdx(null);
 
       try {
+        const start = Date.now();
         const res = await fetch(`${BACKEND}/api/v1/search`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -208,6 +232,10 @@ export default function MapPage() {
         });
         if (!res.ok) throw new Error("Search failed");
         const data: SearchResponse = await res.json();
+        const elapsed = Date.now() - start;
+        const minDelayMs = 2000;
+        const remaining = Math.max(0, minDelayMs - elapsed);
+        await new Promise((r) => setTimeout(r, remaining));
         setRestaurants(data.restaurants);
         setLocLabel(data.user_location.formatted_address);
         const center = { lat: data.user_location.lat, lng: data.user_location.lng };
@@ -230,13 +258,18 @@ export default function MapPage() {
               const peakHtml = rest.peak_surplus_day
                 ? `<p style="margin:4px 0;font-size:12px;color:#b45309;font-weight:600">Peak surplus: ${rest.peak_surplus_day}${rest.peak_surplus_kg != null ? ` (~${rest.peak_surplus_kg.toFixed(1)} kg)` : ""}</p>`
                 : "";
+              const dirUrl = `https://www.google.com/maps/dir/?api=1&destination=${rest.lat},${rest.lng}`;
+              const closed = shouldShowAsClosed(rest.closing_time);
+              const closesHtml = closed
+                ? '<p style="margin:4px 0;font-size:12px;color:#dc2626;font-weight:600">Closed</p>'
+                : `<p style="margin:4px 0;font-size:12px;color:#16a34a;font-weight:600">Closes: ${rest.closing_time}</p>`;
               infoRef.current.setContent(`
                 <div style="padding:8px;max-width:260px">
                   <strong style="font-size:14px">${rest.restaurant_name}</strong>
-                  <p style="margin:4px 0;font-size:12px;color:#666">${rest.address}</p>
-                  <p style="margin:4px 0;font-size:12px;color:#16a34a;font-weight:600">
-                    Closes: ${rest.closing_time}
+                  <p style="margin:4px 0;font-size:12px;color:#666">
+                    <a href="${dirUrl}" target="_blank" rel="noopener noreferrer" style="color:#16a34a;text-decoration:underline;cursor:pointer">${rest.address}</a>
                   </p>
+                  ${closesHtml}
                   ${peakHtml}
                   <p style="font-size:11px;color:#888">${rest.distance_miles} mi away</p>
                 </div>
@@ -281,6 +314,7 @@ export default function MapPage() {
     }
 
     try {
+      const start = Date.now();
       const res = await fetch(`${BACKEND}/api/v1/search`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -291,6 +325,10 @@ export default function MapPage() {
         throw new Error(e.detail || `Request failed (${res.status})`);
       }
       const data: SearchResponse = await res.json();
+      const elapsed = Date.now() - start;
+      const minDelayMs = 5000;
+      const remaining = Math.max(0, minDelayMs - elapsed);
+      await new Promise((r) => setTimeout(r, remaining));
       setRestaurants(data.restaurants);
       setLocLabel(data.user_location.formatted_address);
       const center = { lat: data.user_location.lat, lng: data.user_location.lng };
@@ -322,6 +360,7 @@ export default function MapPage() {
   };
 
   return (
+    <AuthGuard>
     <div className="flex h-[calc(100vh-4rem)] flex-col lg:flex-row">
       {/* Sidebar */}
       <div className="flex w-full flex-col border-r border-gray-200 bg-white lg:w-[420px]">
@@ -419,9 +458,9 @@ export default function MapPage() {
                             <MapPin className="h-3 w-3" />
                             {rest.distance_miles} mi
                           </span>
-                          <span className="flex items-center gap-1 font-medium text-brand-600">
+                          <span className={`flex items-center gap-1 font-medium ${shouldShowAsClosed(rest.closing_time) ? "text-red-600" : "text-brand-600"}`}>
                             <Clock className="h-3 w-3" />
-                            Closes {rest.closing_time}
+                            {shouldShowAsClosed(rest.closing_time) ? "Closed" : `Closes ${rest.closing_time}`}
                           </span>
                         </div>
 
@@ -484,5 +523,6 @@ export default function MapPage() {
         )}
       </div>
     </div>
+    </AuthGuard>
   );
 }

@@ -5,27 +5,23 @@ import { createClient } from "@/lib/supabase";
 import { useAuthStore } from "@/store/useAuthStore";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { login, logout } = useAuthStore();
+  const { login, logout, setAuthInitialized } = useAuthStore();
 
   useEffect(() => {
     let supabase;
     try {
       supabase = createClient();
     } catch {
+      setAuthInitialized(true);
       return;
     }
 
     const initSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("role, full_name")
-          .eq("id", session.user.id)
-          .single();
-        const role = profile?.role ?? "consumer";
+        const role =
+          (session.user.user_metadata?.role as string) ?? "consumer";
         const name =
-          profile?.full_name ??
           (session.user.user_metadata?.full_name as string) ??
           session.user.email?.split("@")[0] ??
           "User";
@@ -41,22 +37,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         logout();
       }
+      setAuthInitialized(true);
     };
 
     initSession();
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("role, full_name")
-          .eq("id", session.user.id)
-          .single();
-        const role = profile?.role ?? "consumer";
+        const role =
+          (session.user.user_metadata?.role as string) ?? "consumer";
         const name =
-          profile?.full_name ??
           (session.user.user_metadata?.full_name as string) ??
           session.user.email?.split("@")[0] ??
           "User";
@@ -75,7 +67,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, [login, logout]);
+  }, [login, logout, setAuthInitialized]);
 
   return <>{children}</>;
 }

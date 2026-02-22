@@ -1,14 +1,15 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   MapPin,
   Search,
   Clock,
-  Star,
   Utensils,
   Loader2,
   Navigation,
+  TrendingUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { initGoogleMaps } from "@/lib/google-maps";
@@ -24,6 +25,8 @@ interface Restaurant {
   closing_time: string;
   hours_of_operation: string[];
   distance_miles: number;
+  peak_surplus_day?: string;
+  peak_surplus_kg?: number;
 }
 
 interface SearchResponse {
@@ -34,6 +37,7 @@ interface SearchResponse {
 }
 
 export default function MapPage() {
+  const searchParams = useSearchParams();
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<google.maps.Map | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -98,7 +102,7 @@ export default function MapPage() {
   }, []);
 
   const placeMarkers = useCallback(
-    (data: Restaurant[], center: { lat: number; lng: number }) => {
+    (data: Restaurant[], center: { lat: number; lng: number }, skipFitBounds?: boolean) => {
       if (!mapInstance.current || !mapReady) return;
       clearMarkers();
 
@@ -151,6 +155,9 @@ export default function MapPage() {
 
         marker.addListener("click", () => {
           setSelectedIdx(idx);
+          const peakHtml = rest.peak_surplus_day
+            ? `<p style="margin:4px 0;font-size:12px;color:#b45309;font-weight:600">Peak surplus: ${rest.peak_surplus_day}${rest.peak_surplus_kg != null ? ` (~${rest.peak_surplus_kg.toFixed(1)} kg)` : ""}</p>`
+            : "";
           infoRef.current?.setContent(`
             <div style="padding:8px;max-width:260px">
               <strong style="font-size:14px">${rest.restaurant_name}</strong>
@@ -158,6 +165,7 @@ export default function MapPage() {
               <p style="margin:4px 0;font-size:12px;color:#16a34a;font-weight:600">
                 Closes: ${rest.closing_time}
               </p>
+              ${peakHtml}
               <p style="font-size:11px;color:#888">${rest.distance_miles} mi away</p>
             </div>
           `);
@@ -169,10 +177,86 @@ export default function MapPage() {
         bounds.extend({ lat: rest.lat, lng: rest.lng });
       });
 
-      if (data.length) mapInstance.current.fitBounds(bounds, 60);
+      if (data.length && !skipFitBounds) mapInstance.current.fitBounds(bounds, 60);
     },
     [mapReady, clearMarkers]
   );
+
+  // When arriving from Directions link with lat/lng, search and zoom to restaurant
+  const directionsLat = searchParams.get("lat");
+  const directionsLng = searchParams.get("lng");
+  const hasDirectionsParams = directionsLat && directionsLng;
+
+  useEffect(() => {
+    if (!hasDirectionsParams || !mapReady) return;
+    const lat = parseFloat(directionsLat!);
+    const lng = parseFloat(directionsLng!);
+    if (isNaN(lat) || isNaN(lng)) return;
+
+    const doSearchAndZoom = async () => {
+      setLoading(true);
+      setError(null);
+      setRestaurants([]);
+      setSearched(true);
+      setSelectedIdx(null);
+
+      try {
+        const res = await fetch(`${BACKEND}/api/v1/search`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: "restaurant", radius_miles: 5, lat, lng }),
+        });
+        if (!res.ok) throw new Error("Search failed");
+        const data: SearchResponse = await res.json();
+        setRestaurants(data.restaurants);
+        setLocLabel(data.user_location.formatted_address);
+        const center = { lat: data.user_location.lat, lng: data.user_location.lng };
+        if (mapInstance.current) {
+          placeMarkers(data.restaurants, center, true);
+          const idx = data.restaurants.findIndex(
+            (r) => Math.abs(r.lat - lat) < 0.0001 && Math.abs(r.lng - lng) < 0.0001
+          );
+          const map = mapInstance.current;
+          const bounds = new google.maps.LatLngBounds(
+            { lat: lat - 0.002, lng: lng - 0.002 },
+            { lat: lat + 0.002, lng: lng + 0.002 }
+          );
+          map.fitBounds(bounds, { top: 80, right: 80, bottom: 80, left: 80 });
+          if (idx >= 0) {
+            setSelectedIdx(idx);
+            const m = markersRef.current[idx + 1];
+            if (m && infoRef.current) {
+              const rest = data.restaurants[idx];
+              const peakHtml = rest.peak_surplus_day
+                ? `<p style="margin:4px 0;font-size:12px;color:#b45309;font-weight:600">Peak surplus: ${rest.peak_surplus_day}${rest.peak_surplus_kg != null ? ` (~${rest.peak_surplus_kg.toFixed(1)} kg)` : ""}</p>`
+                : "";
+              infoRef.current.setContent(`
+                <div style="padding:8px;max-width:260px">
+                  <strong style="font-size:14px">${rest.restaurant_name}</strong>
+                  <p style="margin:4px 0;font-size:12px;color:#666">${rest.address}</p>
+                  <p style="margin:4px 0;font-size:12px;color:#16a34a;font-weight:600">
+                    Closes: ${rest.closing_time}
+                  </p>
+                  ${peakHtml}
+                  <p style="font-size:11px;color:#888">${rest.distance_miles} mi away</p>
+                </div>
+              `);
+              setTimeout(() => {
+                infoRef.current?.open(map, m);
+                document.getElementById(`rest-${idx}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+              }, 400);
+            }
+          }
+        }
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Something went wrong.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    doSearchAndZoom();
+  }, [hasDirectionsParams, mapReady, directionsLat, directionsLng, placeMarkers]);
 
   const handleSearch = async (lat?: number, lng?: number) => {
     setLoading(true);
@@ -311,9 +395,12 @@ export default function MapPage() {
                       setSelectedIdx(idx);
                       const m = markersRef.current[idx + 1]; // +1 because index 0 is user marker
                       if (m && mapInstance.current) {
-                        mapInstance.current.panTo({ lat: rest.lat, lng: rest.lng });
-                        mapInstance.current.setZoom(15);
-                        google.maps.event.trigger(m, "click");
+                        const bounds = new google.maps.LatLngBounds(
+                          { lat: rest.lat - 0.003, lng: rest.lng - 0.003 },
+                          { lat: rest.lat + 0.003, lng: rest.lng + 0.003 }
+                        );
+                        mapInstance.current.fitBounds(bounds, { top: 60, right: 60, bottom: 60, left: 60 });
+                        setTimeout(() => google.maps.event.trigger(m, "click"), 350);
                       }
                     }}
                   >
@@ -328,12 +415,6 @@ export default function MapPage() {
                         <p className="mt-0.5 truncate text-xs text-gray-500">{rest.address}</p>
 
                         <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
-                          {rest.rating > 0 && (
-                            <span className="flex items-center gap-1">
-                              <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                              {rest.rating}
-                            </span>
-                          )}
                           <span className="flex items-center gap-1">
                             <MapPin className="h-3 w-3" />
                             {rest.distance_miles} mi
@@ -343,6 +424,16 @@ export default function MapPage() {
                             Closes {rest.closing_time}
                           </span>
                         </div>
+
+                        {rest.peak_surplus_day && (
+                          <p className="mt-1 flex items-center gap-1 text-xs font-medium text-amber-700">
+                            <TrendingUp className="h-3 w-3" />
+                            Peak surplus: {rest.peak_surplus_day}
+                            {rest.peak_surplus_kg != null && (
+                              <span className="text-gray-500">(~{rest.peak_surplus_kg.toFixed(1)} kg)</span>
+                            )}
+                          </p>
+                        )}
 
                         {rest.hours_of_operation.length > 0 && (
                           <div className="mt-2 rounded-md bg-gray-50 px-3 py-2">

@@ -4,9 +4,7 @@ import {
   ListPlus,
   HandHeart,
   Truck,
-  Users,
   Leaf,
-  TrendingUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
@@ -15,7 +13,7 @@ const steps = [
     icon: ListPlus,
     title: "List Surplus",
     description:
-      "Restaurants, stores, and farms post surplus food with details and expiry times.",
+      "Restaurants, stores, and farms post surplus food with peak surplus days, quantities, and availability hours.",
   },
   {
     icon: HandHeart,
@@ -31,12 +29,6 @@ const steps = [
   },
 ];
 
-const stats = [
-  { label: "Meals Rescued", value: "24,500+", icon: Leaf },
-  { label: "Active Users", value: "3,200+", icon: Users },
-  { label: "Pounds Diverted", value: "48,000+", icon: TrendingUp },
-];
-
 export default function HomePage() {
   return (
     <>
@@ -50,14 +42,14 @@ export default function HomePage() {
           <div className="mx-auto max-w-3xl text-center">
             <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-brand-100 px-4 py-1.5 text-sm font-medium text-brand-700">
               <Leaf className="h-4 w-4" />
-              Reducing food waste, one meal at a time
+              Filling plates, not landfills
             </div>
             <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl lg:text-6xl">
               Rescue Food,{" "}
               <span className="text-brand-600">Feed Communities</span>
             </h1>
             <p className="mx-auto mt-6 max-w-2xl text-lg text-gray-600">
-              FoodApp connects businesses with surplus food to households, food
+              SecondServing connects businesses with surplus food to households, food
               banks, and composters in your neighborhood. See what&apos;s
               available on the map, claim it, and pick it up — all in real time.
             </p>
@@ -66,11 +58,6 @@ export default function HomePage() {
                 <Button size="lg" className="gap-2">
                   Find Food Near Me
                   <ArrowRight className="h-4 w-4" />
-                </Button>
-              </Link>
-              <Link href="/register">
-                <Button variant="outline" size="lg">
-                  I&apos;m a Business
                 </Button>
               </Link>
             </div>
@@ -113,20 +100,13 @@ export default function HomePage() {
 
       {/* Stats */}
       <section className="bg-brand-600 py-16">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid gap-8 md:grid-cols-3">
-            {stats.map((stat) => (
-              <div key={stat.label} className="text-center">
-                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-white/20">
-                  <stat.icon className="h-6 w-6 text-white" />
-                </div>
-                <p className="text-3xl font-extrabold text-white">
-                  {stat.value}
-                </p>
-                <p className="mt-1 text-sm text-brand-100">{stat.label}</p>
-              </div>
-            ))}
-          </div>
+        <div className="mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
+          <h2 className="text-3xl font-bold text-white sm:text-4xl">
+            Filling plates, not landfills
+          </h2>
+          <p className="mt-4 text-xl font-bold italic text-white">
+            Connecting surplus food with people who need it most.
+          </p>
         </div>
       </section>
 
@@ -142,7 +122,12 @@ export default function HomePage() {
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link href="/register">
-              <Button size="lg">Get Started Free</Button>
+              <Button size="lg">Find Food Near Me</Button>
+            </Link>
+            <Link href="/register/business">
+              <Button variant="outline" size="lg">
+                Register Your Business
+              </Button>
             </Link>
             <Link href="/listings">
               <Button variant="outline" size="lg">

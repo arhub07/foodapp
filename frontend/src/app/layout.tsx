@@ -3,6 +3,7 @@ import Script from "next/script";
 import { Inter } from "next/font/google";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
+import { AuthProvider } from "@/components/auth/AuthProvider";
 import "./globals.css";
 
 const inter = Inter({
@@ -11,7 +12,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "FoodApp - Rescue Surplus Food",
+  title: "SecondServing - Rescue Surplus Food",
   description:
     "Connect surplus food from restaurants, stores, and farms with households, food banks, and composters in real-time.",
 };
@@ -32,9 +33,11 @@ export default function RootLayout({
             strategy="beforeInteractive"
           />
         )}
-        <Navbar />
-        <main className="flex-1">{children}</main>
-        <Footer />
+        <AuthProvider>
+          <Navbar />
+          <main className="flex-1">{children}</main>
+          <Footer />
+        </AuthProvider>
       </body>
     </html>
   );

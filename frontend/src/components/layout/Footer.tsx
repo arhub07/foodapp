@@ -9,10 +9,10 @@ export function Footer() {
             <div className="flex h-7 w-7 items-center justify-center rounded-md bg-brand-600">
               <Leaf className="h-4 w-4 text-white" />
             </div>
-            <span className="text-sm font-semibold text-gray-900">FoodApp</span>
+            <span className="text-sm font-semibold text-gray-900">SecondServing</span>
           </div>
           <p className="text-xs text-gray-500">
-            &copy; {new Date().getFullYear()} FoodApp. Reducing food waste, one meal at a time.
+            &copy; {new Date().getFullYear()} SecondServing. Filling plates, not landfills.
           </p>
         </div>
       </div>

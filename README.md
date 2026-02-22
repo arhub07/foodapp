@@ -1,4 +1,4 @@
-# FoodApp — Surplus Food Rescue Platform
+# SecondServing — Surplus Food Rescue Platform
 
 A real-time network connecting restaurants, stores, and farms with communities to rescue surplus food. Businesses list items before expiration; nearby households, food banks, or composters claim them instantly via app. AI learns waste patterns to optimize future ordering.
 
@@ -126,6 +126,19 @@ The ML service runs at **http://localhost:8001**.
 | `PINECONE_API_KEY` | For RAG | Pinecone vector database API key |
 | `RAPIDFIRE_API_KEY` | For ML | RapidfireAI training optimization key |
 | `APP_SECRET_KEY` | Yes | Secret key for JWT signing |
+
+### Frontend (`frontend/.env.local`)
+
+| Variable | Required | Description |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | For auth | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | For auth | Supabase anon/public key |
+
+For auth: create a Supabase project, run these in the SQL Editor (in order):
+1. `supabase/migrations/001_create_restaurants.sql`
+2. `supabase/migrations/002_create_profiles.sql`
+
+Then add the env vars. Separate login/register flows exist for **Find Food** (consumers) and **Businesses** (restaurants).
 
 ## Project Structure
 
